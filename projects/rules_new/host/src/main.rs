@@ -19,10 +19,10 @@ pub mod proto {
 }
 
 #[derive(Default)]
-pub struct MyProver;
+pub struct VerifiableProcessingServiceServerImplementation;
 
 #[tonic::async_trait]
-impl VerifiableProcessingService for MyProver {
+impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementation {
     async fn prove(
         &self,
         request: Request<ProveRequest>,
@@ -185,12 +185,12 @@ fn main2() {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
-    let prover = MyProver::default();
+    let vpssi: VerifiableProcessingServiceServerImplementation = VerifiableProcessingServiceServerImplementation::default();
 
-    println!("GreeterServer listening on {}", addr);
+    println!("VerifiableProcessingService listening on {}", addr);
 
     Server::builder()
-        .add_service(VerifiableProcessingServiceServer::new(prover))
+        .add_service(VerifiableProcessingServiceServer::new(vpssi))
         .serve(addr)
         .await?;
 
