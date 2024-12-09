@@ -1,13 +1,13 @@
 use std::str::FromStr;
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub enum Operation{
+pub enum Operation {
     Add,
     Sub,
     Mul,
-    Div
+    Div,
 }
-impl FromStr for Operation{
+impl FromStr for Operation {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -15,14 +15,14 @@ impl FromStr for Operation{
             "sub" => Ok(Operation::Sub),
             "mul" => Ok(Operation::Mul),
             "div" => Ok(Operation::Div),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct OperationRequest{
+pub struct OperationRequest {
     pub a: f64,
     pub b: f64,
-    pub operation: Operation
+    pub operation: Operation,
 }
