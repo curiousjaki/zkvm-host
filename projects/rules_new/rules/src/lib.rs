@@ -90,8 +90,8 @@ impl RuleChecker for Rule {
 
 #[derive(Debug, Hash, serde::Serialize, serde::Deserialize)]
 struct FollowedBy {
-    prior: [u32; 8],
-    next: [u32; 8],
+    pub prior: [u32; 8],
+    pub next: [u32; 8],
 }
 
 #[derive(Debug, Hash, serde::Serialize, serde::Deserialize)]
@@ -113,9 +113,9 @@ impl RuleChecker for PrecedenceRule {
 
 #[derive(Debug, Hash, serde::Serialize, serde::Deserialize)]
 pub struct CardinalityRule {
-    prior: [u32; 8],
-    min: u64,
-    max: u64,
+    pub prior: [u32; 8],
+    pub min: u64,
+    pub max: u64,
 }
 
 impl RuleChecker for CardinalityRule {
@@ -130,8 +130,8 @@ impl RuleChecker for CardinalityRule {
 
 #[derive(Debug, Hash, serde::Serialize, serde::Deserialize)]
 pub struct ExclusivenessRule {
-    prior_a: [u32; 8],
-    prior_b: [u32; 8],
+    pub prior_a: [u32; 8],
+    pub prior_b: [u32; 8],
 }
 
 impl RuleChecker for ExclusivenessRule {

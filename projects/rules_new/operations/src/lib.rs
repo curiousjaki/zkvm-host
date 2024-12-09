@@ -19,3 +19,10 @@ impl FromStr for Operation{
         }
     }
 }
+
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct OperationRequest{
+    pub a: f64,
+    pub b: f64,
+    pub operation: Operation
+}
