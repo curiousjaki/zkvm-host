@@ -10,8 +10,8 @@ use rules::{ConformanceMetadata, RuleChecker, InsertEvent};
 fn main() {
 
     // read the operation input
-    let or: OperationRequest = env::read();
-    
+    let method_payload: String = env::read();
+    let or: OperationRequest = from_str(&method_payload).unwrap();
     // read the conformance metadata input
     let serialized_cm: String = env::read();
     let mut cm: ConformanceMetadata = from_str(&serialized_cm).unwrap();

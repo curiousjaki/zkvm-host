@@ -18,6 +18,19 @@ message Rule {
     string rule_code = 3;
 }
 
+message ProcessMetadata{
+    string process_type = 1;
+    string process_instance_id = 2;
+    uint32 epoch_seconds = 3;
+}
+
+message PoamMetadata{
+    Proof previous_proof = 1;
+    repeated uint32 current_image_id = 2;
+    repeated Rule current_rules = 3;
+    repeated Rule global_ordering_rules = 4;
+}
+
 message CompositionRequest {
     repeated Proof proof_chain = 1;
 }
@@ -28,11 +41,9 @@ message CompositionResponse {
 }
 
 message ProveRequest {
-    double variable_a = 1;
-    double variable_b = 2;
-    string operation = 3;
-    repeated uint32 image_id= 4;
-    repeated Proof past_proof_chain = 5;
+    ProcessMetadata process_metadata = 1;
+    PoamMetadata poam_metadata = 2;
+    string method_payload = 3;
 }
 
 message ProveResponse {

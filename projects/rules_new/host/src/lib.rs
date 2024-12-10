@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use operations::Operation;
 use rules::{CardinalityRule, ConformanceMetadata, InsertEvent, PrecedenceRule, Rule,CompositeProofInput};
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
@@ -7,28 +9,36 @@ use methods::{
 };
 use qfilter::Filter;
 use anyhow::Error;
+use once_cell::sync::Lazy;
+
+static ELF_MAP: Lazy<HashMap<[u32; 8], &[u8]>> = Lazy::new(|| {
+    HashMap::from([
+        (VERIFIABLE_PROCESSING_ID, VERIFIABLE_PROCESSING_ELF),
+        (COMPOSITE_PROVING_ID, COMPOSITE_PROVING_ELF),
+    ])
+});
 
 
 pub fn prove_method(
-    a: f64,
-    b: f64,
-    operation: Operation,
+    method_payload: &String,
     conformance_metadata: &ConformanceMetadata,
 ) -> Receipt {
     println!("Build Proof and send to vm");
-    let or = operations::OperationRequest { a, b, operation };
+    //let method_payload = operations::OperationRequest { a, b, operation };
     let serialized_conformance_metadata: String =
         serde_json::to_string(&conformance_metadata).unwrap();
     let env = ExecutorEnv::builder()
-        .write(&or)
+        .write(&method_payload)
         .unwrap()
         .write(&serialized_conformance_metadata)
         .unwrap()
         .build()
         .unwrap();
-    let prover = default_prover();
+
     // read the input
-    let prove_info = prover.prove(env, VERIFIABLE_PROCESSING_ELF).unwrap();
+    let elf = ELF_MAP.get(&conformance_metadata.current_image_id).unwrap();
+    let prover = default_prover();
+    let prove_info = prover.prove(env, elf).unwrap();
     return prove_info.receipt;
 }
 
@@ -36,14 +46,13 @@ pub fn perform_composite_prove(receipts: Vec<Receipt>, image_id: [u32; 8]) -> Re
     let mut env_builder = ExecutorEnv::builder();
     let mut cpi: Vec<CompositeProofInput> = Vec::new();
     for r in receipts.iter() {
+        //println!("{:?}",r.metadata);
         env_builder.add_assumption(r.clone());
         cpi.push(CompositeProofInput{image_id:image_id.clone(),public_data: r.journal.decode().unwrap()});
     }
     let cpi_string = serde_json::to_string(&cpi).unwrap();
     println!("{:?}",cpi_string);
     let env = env_builder
-        //.write(&image_id)
-        //.unwrap()
         .write(&cpi_string)
         .unwrap()
         .build()
@@ -65,6 +74,8 @@ pub fn perform_composite_prove(receipts: Vec<Receipt>, image_id: [u32; 8]) -> Re
 
 #[cfg(test)]
 mod tests {
+    use operations::OperationRequest;
+
     use super::*;
 
    //RISC0_DEV_MODE=0 RUST_LOG=info cargo test --release -- --nocapture
@@ -95,8 +106,9 @@ mod tests {
             rules: rules1,
             qf: qf,
         };
+        let method_payload = serde_json::to_string(&OperationRequest{a: 1.0, b: 2.0, operation: Operation::Add }).unwrap();
 
-        let receipt1 = prove_method(1.0, 2.0, Operation::Add, &cm);
+        let receipt1 = prove_method(&method_payload, &cm);
         //&receipt1.verify(cm.current_image_id).unwrap();
         let result_json = receipt1.journal.decode::<(String)>().unwrap();
         let metadata_json = receipt1.journal.decode::<(String)>().unwrap();
