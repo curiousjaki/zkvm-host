@@ -13,4 +13,3 @@ serde = "1.0"
 serde_json = "1.0"
 serde_bytes = "0.11"
 qfilter = { version = "0.2.1", features = ['serde'] }
-

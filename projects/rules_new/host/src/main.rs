@@ -45,7 +45,7 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
             a,
             b,
             Operation::from_str(&operation).unwrap(),
-            ConformanceMetadata {
+            &ConformanceMetadata {
                 previous_image_id: VERIFIABLE_PROCESSING_ID,
                 current_image_id: VERIFIABLE_PROCESSING_ID,
                 rules: vec![],
@@ -170,7 +170,7 @@ fn main() {
         qf: f,
     };
 
-    let receipt1 = prove_method(1.0, 2.0, Operation::Add, cm);
+    let receipt1 = prove_method(1.0, 2.0, Operation::Add, &cm);
     //let receipt2 = prove_method(1.0, 2.0, Operation::Mul, rule_set.clone());
     //let receipt3 = prove_method(1.0, 2.0, Operation::Sub, rule_set.clone());
     //let receipt4 = prove_method(1.0, 2.0, Operation::Div, rule_set);

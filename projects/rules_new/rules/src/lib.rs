@@ -10,6 +10,12 @@ fn char_to_u32_array(ch: char) -> [u32; 8] {
     result
 }
 
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct CompositeProofInput{
+    pub image_id: [u32; 8],
+    pub public_data: (String, String),
+}
+
 pub trait InsertEvent {
     fn insert_ordered_event(
         &mut self,
