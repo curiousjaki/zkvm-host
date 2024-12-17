@@ -1,5 +1,6 @@
 use qfilter::Filter;
-use rules::{CardinalityRule, ConformanceMetadata, InsertEvent, PrecedenceRule, Rule};
+use rules::event_filter::InsertEvent;
+use rules::{CardinalityRule, PrecedenceRule, Rule};
 use serde_json;
 use std::any::Any;
 use std::str::FromStr;
@@ -11,7 +12,7 @@ use methods::{
     COMPOSITE_PROVING_ELF, COMPOSITE_PROVING_ID, VERIFIABLE_PROCESSING_ELF,
     VERIFIABLE_PROCESSING_ID,
 };
-use host::{prove_method,perform_composite_prove};
+use host::{prove_method};//,perform_composite_prove};
 use proto::verifiable_processing_service_server::{
     VerifiableProcessingService, VerifiableProcessingServiceServer,
 };
@@ -38,33 +39,33 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
 
         let request = request.into_inner();
 
-        let receipt = prove_method(
-            &request.method_payload,
-            &ConformanceMetadata {
-                previous_image_id: VERIFIABLE_PROCESSING_ID,
-                current_image_id: VERIFIABLE_PROCESSING_ID,
-                rules: vec![],
-                qf: Filter::new(100, 0.01).unwrap(),
-            },
-        );
+        //let receipt = prove_method(
+        //    &request.method_payload,
+        //    &ConformanceMetadata {
+        //        previous_image_id: VERIFIABLE_PROCESSING_ID,
+        //        current_image_id: VERIFIABLE_PROCESSING_ID,
+        //        rules: vec![],
+        //        qf: Filter::new(100, 0.01).unwrap(),
+        //    },
+        //);
 
-        let (response_value, qfilter_json): (f64, String) =
-            receipt.journal.decode::<(f64, String)>().unwrap();
+        //let (response_value, qfilter_json): (f64, String) =
+        //    receipt.journal.decode::<(f64, String)>().unwrap();
         //let response_2 = receipt.journal.decode().unwrap();
 
-        let filter: qfilter::Filter = serde_json::from_str(&qfilter_json).unwrap();
-        println!("\n filter: {:?}", &filter);
+        //let filter: qfilter::Filter = serde_json::from_str(&qfilter_json).unwrap();
+        //println!("\n filter: {:?}", &filter);
         //println!("{:?}",filter);
         let reply = ProveResponse {
             //receipt: Some(receipt.into()),
-            response_value: response_value,
+            response_value: 44.0,
             proof_response: Some(Proof {
                 image_id: VERIFIABLE_PROCESSING_ID.to_vec(),
-                receipt: bincode::serialize(&receipt).unwrap(),
+                receipt: bincode::serialize("&receipt").unwrap(),
             }),
             proof_chain: vec![Proof {
                 image_id: VERIFIABLE_PROCESSING_ID.to_vec(),
-                receipt: bincode::serialize(&receipt).unwrap(),
+                receipt: bincode::serialize("&receipt").unwrap(),
             }],
         };
         Ok(Response::new(reply))
@@ -84,8 +85,8 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
             })
             .collect();
 
-        let composite_receipt = perform_composite_prove(receipts, VERIFIABLE_PROCESSING_ID)
-            .expect("Failed to prove composite receipt");
+        let composite_receipt = "sd";//perform_composite_prove(receipts, VERIFIABLE_PROCESSING_ID)
+            //.expect("Failed to prove composite receipt");
 
         // TODO: Implement code for retrieving receipt journal here.
 
@@ -155,31 +156,31 @@ fn main() {
     let mut f = Filter::new(100, 0.01).expect("Failed to create filter");
     f.insert_event(VERIFIABLE_PROCESSING_ID);
     let mut rules: Vec<Rule> = vec![Rule::Precedence(PrecedenceRule {
-        current: VERIFIABLE_PROCESSING_ID,
+        //current: VERIFIABLE_PROCESSING_ID,
         preceeding: VERIFIABLE_PROCESSING_ID,
     })];
-    let cm: ConformanceMetadata = ConformanceMetadata {
-        previous_image_id: VERIFIABLE_PROCESSING_ID,
-        current_image_id: VERIFIABLE_PROCESSING_ID,
-        rules: rules,
-        qf: f,
-    };
+    //let cm: ConformanceMetadata = ConformanceMetadata {
+    //    previous_image_id: VERIFIABLE_PROCESSING_ID,
+    //    current_image_id: VERIFIABLE_PROCESSING_ID,
+    //    rules: rules,
+    //    qf: f,
+    //};
     let method_payload = serde_json::to_string(&OperationRequest{a: 1.0, b: 2.0, operation: Operation::Add }).unwrap();
-    let receipt1 = prove_method(&method_payload, &cm);
+    //let receipt1 = prove_method(&method_payload, &cm);
     //let receipt2 = prove_method(1.0, 2.0, Operation::Mul, rule_set.clone());
     //let receipt3 = prove_method(1.0, 2.0, Operation::Sub, rule_set.clone());
     //let receipt4 = prove_method(1.0, 2.0, Operation::Div, rule_set);
 
-    let receipts: Vec<Receipt> = vec![receipt1]; //, receipt2, receipt3, receipt4];//, receipt3, receipt4];
+    //let receipts: Vec<Receipt> = vec![receipt1]; //, receipt2, receipt3, receipt4];//, receipt3, receipt4];
     println!("Receipt vector created");
-    let composite_receipt = perform_composite_prove(receipts, VERIFIABLE_PROCESSING_ID)
-        .expect("Failed to prove composite receipt");
+    //let composite_receipt = perform_composite_prove(receipts, VERIFIABLE_PROCESSING_ID)
+    //    .expect("Failed to prove composite receipt");
     // TODO: Implement code for retrieving receipt journal here.
 
     // The receipt was verified at the end of proving, but the below code is an
     // example of how someone else could verify this receipt.
-    println!("Composite receipt created");
-    composite_receipt.verify(COMPOSITE_PROVING_ID).unwrap();
+    //println!("Composite receipt created");
+    //composite_receipt.verify(COMPOSITE_PROVING_ID).unwrap();
 
     //println!("{:?}", composite_receipt);
 }
