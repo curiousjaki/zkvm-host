@@ -26,3 +26,14 @@ pub struct OperationRequest {
     pub b: f64,
     pub operation: Operation,
 }
+
+impl OperationRequest {
+    pub fn compute(&self) -> f64 {
+        match self.operation {
+            Operation::Add => self.a + self.b,
+            Operation::Sub => self.a - self.b,
+            Operation::Mul => self.a * self.b,
+            Operation::Div => self.a / self.b,
+        }
+    }
+}

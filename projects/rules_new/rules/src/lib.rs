@@ -1,7 +1,6 @@
 pub mod event_filter;
 pub mod conformance;
 use event_filter::FollowedBy;
-
 pub trait RuleChecker {
     fn check(&self, qf: &qfilter::Filter,previous_image_id: &[u32;8]) -> bool;
 }

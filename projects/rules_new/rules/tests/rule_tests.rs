@@ -1,6 +1,6 @@
 use rules::{CardinalityRule, PrecedenceRule, Rule, ExclusivenessRule, OrderingRule, RuleChecker};
 use rules::event_filter::InsertEvent;
-use rules::conformance::{CompositeConformanceInput, ConformanceCheckedReceipt, RuleInput};
+use rules::conformance::{PoamInput, PoamMetadata, RuleInput};
 pub fn char_to_u32_array(ch: char) -> [u32; 8] {
     let mut result = [0u32; 8];
     let code_point = ch as u32; // Convert the char to its Unicode code point

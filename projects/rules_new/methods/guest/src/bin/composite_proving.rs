@@ -1,7 +1,7 @@
 //#![no_std] 
 //#![no_main]
 use risc0_zkvm::{guest::env, serde};
-use rules::conformance::{CompositeConformanceInput,RuleInput};
+use rules::conformance::{PoamInput,RuleInput};
 use std::string::String;
 use serde_json::from_str;
 

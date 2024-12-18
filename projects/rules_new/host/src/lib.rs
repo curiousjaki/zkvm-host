@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use rules::event_filter::InsertEvent;
 use operations::Operation;
-use rules::conformance::{CompositeConformanceInput, RuleInput, ConformanceCheckedReceipt};
+use rules::conformance::{PoamInput, PoamMetadata, RuleInput};
 use rules::{CardinalityRule, PrecedenceRule, Rule};
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use methods::{
@@ -22,13 +22,13 @@ static ELF_MAP: Lazy<HashMap<[u32; 8], &[u8]>> = Lazy::new(|| {
 
 pub fn prove_method(
     method_payload: &String,
-    composite_conformance_input: &CompositeConformanceInput,
+    pi: &PoamInput,
     previous_receipt: Option<Receipt>,
 ) -> Receipt {
     println!("Build Proof and send to vm");
     //let method_payload = operations::OperationRequest { a, b, operation };
-    let serialized_conformance_metadata: String =
-        serde_json::to_string(&composite_conformance_input).unwrap();
+    let ser_pi: String =
+        serde_json::to_string(&pi).unwrap();
     let mut env_builder = ExecutorEnv::builder();
     match previous_receipt {
         Some(receipt) => {
@@ -40,12 +40,12 @@ pub fn prove_method(
     let env = env_builder
         .write(&method_payload)
         .unwrap()
-        .write(&serialized_conformance_metadata)
+        .write(&ser_pi)
         .unwrap()
         .build()
         .unwrap();
     // read the input
-    let elf = ELF_MAP.get(&composite_conformance_input.rule_input.current_image_id).unwrap();
+    let elf = ELF_MAP.get(&pi.image_id).unwrap();
     let prover = default_prover();
     let prove_info = prover.prove(env, elf).unwrap();
     return prove_info.receipt;
@@ -101,9 +101,9 @@ mod tests {
         //let filter = qfilter::Filter::new(1000, 0.01).expect("Failed to create filter");
         //let rule1 = Rule::Cardinality(CardinalityRule{prior: [1,2,3,4,5,6,7,8],max: 1, min: 1});
         //let rule_set: RuleSet = RuleSet{rules: vec![rule1], qf: filter};
-        let mut qf = Filter::new(100, 0.01)
-            .expect("Failed to create filter");
-        qf.insert_event(VERIFIABLE_PROCESSING_ID).unwrap();
+        //let mut qf = Filter::new(100, 0.01)
+        //    .expect("Failed to create filter");
+        //qf.insert_event(VERIFIABLE_PROCESSING_ID).unwrap();
         
         let rules1: Vec<Rule> = vec![Rule::Precedence(PrecedenceRule {
         //current: VERIFIABLE_PROCESSING_ID,
@@ -114,9 +114,10 @@ mod tests {
             &OperationRequest{a: 1.0, b: 2.0, operation: Operation::Add })
             .unwrap();
 
-        let cci1: CompositeConformanceInput = CompositeConformanceInput {
+        let pi1: PoamInput = PoamInput {
+            image_id: VERIFIABLE_PROCESSING_ID,
             rule_input: RuleInput {
-                current_image_id: VERIFIABLE_PROCESSING_ID,
+                //current_image_id: VERIFIABLE_PROCESSING_ID,
                 rules: None,
                 ordering_rules: None,
             },
@@ -125,14 +126,15 @@ mod tests {
 
         let receipt1 = prove_method(
             &method_payload1,
-            &cci1,None);
+            &pi1,None);
         //&receipt1.verify(cm.current_image_id).unwrap();
         let (result_json,metadata_json):(String,String) = receipt1.journal.decode().unwrap();
         println!("Result: {}, Metadata: {}",result_json, metadata_json);
 
-        let cci2: CompositeConformanceInput = CompositeConformanceInput {
+        let pi2: PoamInput = PoamInput {
+            image_id: VERIFIABLE_PROCESSING_ID,
             rule_input: RuleInput {
-                current_image_id: VERIFIABLE_PROCESSING_ID,
+                //current_image_id: VERIFIABLE_PROCESSING_ID,
                 rules: Some(rules1),
                 ordering_rules: None,
             },
@@ -140,7 +142,7 @@ mod tests {
         };
         let receipt2 = prove_method(
             &method_payload1,
-            &cci2,Some(receipt1));
+            &pi2,Some(receipt1));
         //&receipt1.verify(cm.current_image_id).unwrap();
         let (result_json2,metadata_json2):(String,String) = receipt2.journal.decode().unwrap();
         println!("Result: {}, Metadata: {}",result_json2, metadata_json2);
