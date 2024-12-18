@@ -19,8 +19,8 @@ use rules::conformance::{
 use rules::event_filter::InsertEvent;
 
 
-fn verify_previous_receipt(pi: PoamInput) -> PoamMetadata {
-    match pi.public_data {
+fn verify_previous_receipt(pi: &PoamInput) -> PoamMetadata {
+    match &pi.public_data {
         Some((public_data_json, metadata_json)) => {
             let mut pm : PoamMetadata = from_str(&metadata_json).unwrap();
             //env::write(&format!("{:?}",&ccr.image_id));
@@ -54,7 +54,7 @@ fn main() {
     let operation_request: OperationRequest = from_str(&method_payload).unwrap();
     let pi: PoamInput = from_str(&ser_pi).unwrap();
 
-    let mut pm: PoamMetadata;
+    let mut pm: PoamMetadata = verify_previous_receipt(&pi);
 
     
 
