@@ -25,7 +25,7 @@ message ProcessMetadata{
 }
 
 message PoamMetadata{
-    Proof previous_proof = 1;
+    optional Proof previous_proof = 1;
     repeated uint32 current_image_id = 2;
     repeated Rule current_rules = 3;
     repeated Rule global_ordering_rules = 4;
@@ -41,13 +41,13 @@ message CompositionResponse {
 }
 
 message ProveRequest {
-    ProcessMetadata process_metadata = 1;
+    optional ProcessMetadata process_metadata = 1;
     PoamMetadata poam_metadata = 2;
     string method_payload = 3;
 }
 
 message ProveResponse {
-    double response_value = 1;
+    string public_output = 1;
     Proof proof_response = 2;
     repeated Proof proof_chain = 4;
 }

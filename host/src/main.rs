@@ -1,4 +1,5 @@
 use qfilter::Filter;
+use rules::conformance::{PoamInput, RuleInput};
 use rules::event_filter::InsertEvent;
 use rules::{CardinalityRule, PrecedenceRule, Rule};
 use serde_json;
@@ -9,10 +10,12 @@ use operations::{OperationRequest,Operation};
 // The ELF is used for proving and the ID is used for verification.
 use anyhow::Error;
 use methods::{
-    COMPOSITE_PROVING_ELF, COMPOSITE_PROVING_ID, VERIFIABLE_PROCESSING_ELF,
-    VERIFIABLE_PROCESSING_ID,
+    PROVE_ID, PROVE_ELF, COMPOSE_ID, COMPOSE_ELF, VERIFY_ID, VERIFY_ELF
 };
 use host::{prove_method};//,perform_composite_prove};
+pub mod proto {
+    tonic::include_proto!("poam");
+}
 use proto::verifiable_processing_service_server::{
     VerifiableProcessingService, VerifiableProcessingServiceServer,
 };
@@ -22,9 +25,7 @@ use proto::{
 };
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use tonic::{transport::Server, Request, Response, Status};
-pub mod proto {
-    tonic::include_proto!("poam");
-}
+
 
 #[derive(Default)]
 pub struct VerifiableProcessingServiceServerImplementation;
@@ -35,20 +36,70 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
         &self,
         request: Request<ProveRequest>,
     ) -> Result<Response<ProveResponse>, Status> {
-        //println!("Got a request: {:?}", request);
+        println!("Got a request: {:?}", request);
 
         let request = request.into_inner();
 
-        //let receipt = prove_method(
-        //    &request.method_payload,
-        //    &ConformanceMetadata {
-        //        previous_image_id: VERIFIABLE_PROCESSING_ID,
-        //        current_image_id: VERIFIABLE_PROCESSING_ID,
-        //        rules: vec![],
-        //        qf: Filter::new(100, 0.01).unwrap(),
-        //    },
-        //);
+        let previous_proof: Option<Proof> = request
+                    .poam_metadata
+                    .ok_or(Status::invalid_argument("Missing poam metadata"))?
+                    .previous_proof;
 
+        if previous_proof.is_some() {
+            let previous_receipt: Receipt = bincode::deserialize(&previous_proof.unwrap().receipt).unwrap();
+            let (previous_result_json,previous_metadata_json):(String,String) = previous_receipt.journal.decode().unwrap();
+            let pi: PoamInput = PoamInput {
+                image_id: PROVE_ID,
+                rule_input: RuleInput {
+                    rules: None,
+                    ordering_rules: None,
+                },
+                public_data: Some((previous_result_json,previous_metadata_json)),
+            };
+            let receipt: Receipt = prove_method(
+                &request.method_payload,
+                &pi,
+                Some(previous_receipt),
+            );
+
+
+            let (result_json,metadata_json):(String,String) = receipt.journal.decode().unwrap();
+            let reply = ProveResponse {
+                //receipt: Some(receipt.into()),
+                public_output: result_json,
+                proof_response: Some(Proof {
+                    image_id: PROVE_ID.to_vec(),
+                    receipt: bincode::serialize(&receipt).unwrap(),
+                }),
+                proof_chain: vec![],
+            };
+            return Ok(Response::new(reply))
+        } else{
+            let pi: PoamInput = PoamInput {
+                image_id: PROVE_ID,
+                rule_input: RuleInput {
+                    rules: None,
+                    ordering_rules: None,
+                },
+                public_data: None,
+            };
+            let receipt: Receipt = prove_method(
+                &request.method_payload,
+                &pi,
+                None,
+            );
+            let (result_json,metadata_json):(String,String) = receipt.journal.decode().unwrap();
+            let reply = ProveResponse {
+                //receipt: Some(receipt.into()),
+                public_output: result_json,
+                proof_response: Some(Proof {
+                    image_id: PROVE_ID.to_vec(),
+                    receipt: bincode::serialize(&receipt).unwrap(),
+                }),
+                proof_chain: vec![],
+            };
+            return Ok(Response::new(reply))
+        }
         //let (response_value, qfilter_json): (f64, String) =
         //    receipt.journal.decode::<(f64, String)>().unwrap();
         //let response_2 = receipt.journal.decode().unwrap();
@@ -56,19 +107,7 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
         //let filter: qfilter::Filter = serde_json::from_str(&qfilter_json).unwrap();
         //println!("\n filter: {:?}", &filter);
         //println!("{:?}",filter);
-        let reply = ProveResponse {
-            //receipt: Some(receipt.into()),
-            response_value: 44.0,
-            proof_response: Some(Proof {
-                image_id: VERIFIABLE_PROCESSING_ID.to_vec(),
-                receipt: bincode::serialize("&receipt").unwrap(),
-            }),
-            proof_chain: vec![Proof {
-                image_id: VERIFIABLE_PROCESSING_ID.to_vec(),
-                receipt: bincode::serialize("&receipt").unwrap(),
-            }],
-        };
-        Ok(Response::new(reply))
+       
     }
 
     async fn compose(
@@ -143,7 +182,7 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
 
 
 
-fn main() {
+fn main2() {
     //env_logger::init();
     // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
     println!("Started the Program");
@@ -154,10 +193,10 @@ fn main() {
     //let rule1 = Rule::Cardinality(CardinalityRule{prior: [1,2,3,4,5,6,7,8],max: 1, min: 1});
     //let rule_set: RuleSet = RuleSet{rules: vec![rule1], qf: filter};
     let mut f = Filter::new(100, 0.01).expect("Failed to create filter");
-    f.insert_event(VERIFIABLE_PROCESSING_ID);
+    f.insert_event(PROVE_ID);
     let mut rules: Vec<Rule> = vec![Rule::Precedence(PrecedenceRule {
         //current: VERIFIABLE_PROCESSING_ID,
-        preceeding: VERIFIABLE_PROCESSING_ID,
+        preceeding: PROVE_ID,
     })];
     //let cm: ConformanceMetadata = ConformanceMetadata {
     //    previous_image_id: VERIFIABLE_PROCESSING_ID,
@@ -186,7 +225,7 @@ fn main() {
 }
 
 #[tokio::main]
-async fn main2() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
     let vpssi: VerifiableProcessingServiceServerImplementation =
         VerifiableProcessingServiceServerImplementation::default();

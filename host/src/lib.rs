@@ -5,8 +5,7 @@ use rules::conformance::{PoamInput, PoamMetadata, RuleInput};
 use rules::{CardinalityRule, PrecedenceRule, Rule};
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use methods::{
-    COMPOSITE_PROVING_ELF, COMPOSITE_PROVING_ID, VERIFIABLE_PROCESSING_ELF,
-    VERIFIABLE_PROCESSING_ID,
+    COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID, VERIFY_ELF, VERIFY_ID,
 };
 use qfilter::Filter;
 use anyhow::Error;
@@ -14,8 +13,9 @@ use once_cell::sync::Lazy;
 
 static ELF_MAP: Lazy<HashMap<[u32; 8], &[u8]>> = Lazy::new(|| {
     HashMap::from([
-        (VERIFIABLE_PROCESSING_ID, VERIFIABLE_PROCESSING_ELF),
-        (COMPOSITE_PROVING_ID, COMPOSITE_PROVING_ELF),
+        (PROVE_ID, PROVE_ELF),
+        (COMPOSE_ID, COMPOSE_ELF),
+        (VERIFY_ID, VERIFY_ELF),
     ])
 });
 
@@ -50,6 +50,7 @@ pub fn prove_method(
     let prove_info = prover.prove(env, elf).unwrap();
     return prove_info.receipt;
 }
+
 
 //pub fn perform_composite_prove(receipts: Vec<Receipt>, image_id: [u32; 8]) -> Result<Receipt, Error> {
 //    let mut env_builder = ExecutorEnv::builder();
@@ -92,6 +93,7 @@ mod tests {
     #[test]
     fn test_proving_method(){
         println!("Starting the Program");
+        println!("Prove ID: {:?}",PROVE_ID);
         //env_logger::init();
         // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
 
@@ -107,15 +109,16 @@ mod tests {
         
         let rules1: Vec<Rule> = vec![Rule::Precedence(PrecedenceRule {
         //current: VERIFIABLE_PROCESSING_ID,
-        preceeding: VERIFIABLE_PROCESSING_ID,
+        preceeding: PROVE_ID,
         })];
 
         let method_payload1 = serde_json::to_string(
             &OperationRequest{a: 1.0, b: 2.0, operation: Operation::Add })
             .unwrap();
+        println!("Method Payload: {}",method_payload1);
 
         let pi1: PoamInput = PoamInput {
-            image_id: VERIFIABLE_PROCESSING_ID,
+            image_id: PROVE_ID,
             rule_input: RuleInput {
                 //current_image_id: VERIFIABLE_PROCESSING_ID,
                 rules: None,
@@ -132,7 +135,7 @@ mod tests {
         println!("Result: {}, Metadata: {}",result_json, metadata_json);
 
         let pi2: PoamInput = PoamInput {
-            image_id: VERIFIABLE_PROCESSING_ID,
+            image_id: PROVE_ID,
             rule_input: RuleInput {
                 //current_image_id: VERIFIABLE_PROCESSING_ID,
                 rules: Some(rules1),
