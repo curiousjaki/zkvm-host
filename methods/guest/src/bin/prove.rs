@@ -33,7 +33,7 @@ fn verify_previous_receipt(pi: &PoamInput) -> PoamMetadata {
             return PoamMetadata {
                 was_first_event: true,
                 image_id: pi.image_id, 
-                qf: qfilter::Filter::new(100, 0.01).unwrap()
+                qf: qfilter::Filter::new(1, 0.01).unwrap()
             };
         }
     }
@@ -79,7 +79,16 @@ fn main() {
     pm.qf.insert_event(pi.image_id);
 
     // execute the operation
-    let result: f64 = operation_request.compute();
+    let mut result: f64 = operation_request.compute();
+    result = result + match &pi.public_data {
+        Some((public_data_json, metadata_json)) => {
+            let value : f64 = from_str(&public_data_json).unwrap();
+            value
+        },
+        None => {
+            0.0
+        }
+    };
 
     //let start_serialization = env::cycle_count();
     // serialize the output to json to avouid type mismatch, especially relevant for all vectors.

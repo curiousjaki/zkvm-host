@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub enum Operation {
     Add,
     Sub,
@@ -20,7 +20,7 @@ impl FromStr for Operation {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct OperationRequest {
     pub a: f64,
     pub b: f64,

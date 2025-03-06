@@ -1,15 +1,20 @@
 use std::collections::HashMap;
 use rules::event_filter::InsertEvent;
-use operations::Operation;
+use operations::{Operation, OperationRequest};
 use rules::conformance::{PoamInput, PoamMetadata, RuleInput};
 use rules::{CardinalityRule, PrecedenceRule, Rule};
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use methods::{
-    COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID, VERIFY_ELF, VERIFY_ID,
+    COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID, VERIFY_ELF, VERIFY_ID, COMBINED_ELF, COMBINED_ID
 };
+use serde_json::{from_str, Value};
 use qfilter::Filter;
 use anyhow::Error;
 use once_cell::sync::Lazy;
+pub mod proto {
+    tonic::include_proto!("poam");
+}
+use proto::Proof;
 
 static ELF_MAP: Lazy<HashMap<[u32; 8], &[u8]>> = Lazy::new(|| {
     HashMap::from([
@@ -52,6 +57,64 @@ pub fn prove_method(
 }
 
 
+pub fn compose_method(p1: &Proof, p2: &Proof) -> Receipt{
+    let p1_receipt: Receipt = bincode::deserialize(&p1.receipt).unwrap();
+    let decoded_p1: (String, String) = p1_receipt.journal.decode().unwrap();
+    let ser_po1: String = serde_json::to_string(&decoded_p1).unwrap();
+    let p2_receipt: Receipt = bincode::deserialize(&p2.receipt).unwrap();
+    let decoded_p2: (String, String) = p2_receipt.journal.decode().unwrap();
+    let ser_po2: String = serde_json::to_string(&decoded_p2).unwrap();
+    let mut env_builder = ExecutorEnv::builder();
+    env_builder.add_assumption(p1_receipt);
+    env_builder.add_assumption(p2_receipt);
+    println!("Compose Method");
+    let env = env_builder
+        .write(&serde_json::to_string(&COMPOSE_ID.to_vec()).unwrap())
+        .unwrap()
+        .write(&ser_po1)
+        .unwrap()
+        .write(&ser_po2)
+        .unwrap()
+        .build()
+        .unwrap();
+    let composer = default_prover();
+    let composition = composer.prove(env, COMPOSE_ELF).unwrap();
+    return composition.receipt;
+}
+
+pub fn combined_method(method_payload: &String) -> Receipt{
+    //println!("{:?}",method_payload);
+    let json_value: Value = serde_json::from_str(&method_payload).expect("Failed to parse JSON");
+    //println!("{:?}",json_value);
+    let mut operation_requests: Vec<OperationRequest> = Vec::new();
+    if let Value::Object(map) = json_value {
+        for (key, value) in &map {
+            if let Value::Object(inner_map) = value {
+                let operation : Operation = from_str(&inner_map["operation"].to_string()).unwrap();
+                let operation_request = OperationRequest {
+                    a: inner_map["a"].as_f64().unwrap(),
+                    b: inner_map["b"].as_f64().unwrap(),
+                    operation: operation
+                };
+                operation_requests.push(operation_request);
+            }
+        }
+    }
+    //println!("{:?}",&operation_requests);
+
+    let mut env_builder = ExecutorEnv::builder();
+    let env = env_builder
+        .write(&serde_json::to_string(&COMBINED_ID.to_vec()).unwrap())
+        .unwrap()
+        .write(&serde_json::to_string(&operation_requests).unwrap())
+        .unwrap()
+        .build()
+        .unwrap();
+    let combiner = default_prover();
+    let composition = combiner.prove(env, COMBINED_ELF).unwrap();
+    return composition.receipt;
+}
+
 //pub fn perform_composite_prove(receipts: Vec<Receipt>, image_id: [u32; 8]) -> Result<Receipt, Error> {
 //    let mut env_builder = ExecutorEnv::builder();
 //    let mut cpi: Vec<CompositeProofInput> = Vec::new();
@@ -73,7 +136,6 @@ pub fn prove_method(
 //    let prove = prover.prove(env, COMPOSITE_PROVING_ELF);
 //    match prove {
 //        Ok(prove_info) => {
-//        Ok(prove_info) => {
 //            return Ok(prove_info.receipt);
 //        }
 //        Err(e) => {
@@ -81,6 +143,7 @@ pub fn prove_method(
 //        }
 //    }
 //}
+
 
 
 #[cfg(test)]

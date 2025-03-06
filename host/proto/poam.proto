@@ -5,6 +5,7 @@ service VerifiableProcessingService {
     rpc prove(ProveRequest) returns (ProveResponse);
     rpc compose(CompositionRequest) returns (CompositionResponse);
     rpc verify(VerifyRequest) returns (VerifyResponse);
+    rpc combined(CombinedRequest) returns (ProveResponse);
 } 
 
 message Proof {
@@ -61,3 +62,7 @@ message VerifyResponse {
     bool is_valid_executed = 1;
     string public_output = 2;
 } 
+
+message CombinedRequest {
+    string method_payload = 1;
+}

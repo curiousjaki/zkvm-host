@@ -10,18 +10,16 @@ use operations::{OperationRequest,Operation};
 // The ELF is used for proving and the ID is used for verification.
 use anyhow::Error;
 use methods::{
-    PROVE_ID, PROVE_ELF, COMPOSE_ID, COMPOSE_ELF, VERIFY_ID, VERIFY_ELF
+    PROVE_ID, PROVE_ELF, COMPOSE_ID, COMPOSE_ELF, VERIFY_ID, VERIFY_ELF, COMBINED_ID, COMBINED_ELF,
 };
-use host::{prove_method};//,perform_composite_prove};
-pub mod proto {
-    tonic::include_proto!("poam");
-}
-use proto::verifiable_processing_service_server::{
+use host::{prove_method, compose_method, combined_method};//,perform_composite_prove};
+
+use host::proto::verifiable_processing_service_server::{
     VerifiableProcessingService, VerifiableProcessingServiceServer,
 };
-use proto::{
+use host::proto::{
     CompositionRequest, CompositionResponse, Proof, ProveRequest, ProveResponse, VerifyRequest,
-    VerifyResponse,
+    VerifyResponse, CombinedRequest,
 };
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use tonic::{transport::Server, Request, Response, Status};
@@ -36,7 +34,7 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
         &self,
         request: Request<ProveRequest>,
     ) -> Result<Response<ProveResponse>, Status> {
-        println!("Got a request: {:?}", request);
+        println!("Got a proving request");
 
         let request = request.into_inner();
 
@@ -61,11 +59,10 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
                 &pi,
                 Some(previous_receipt),
             );
-
+            println!("{:?}","with receipt verification");
 
             let (result_json,metadata_json):(String,String) = receipt.journal.decode().unwrap();
             let reply = ProveResponse {
-                //receipt: Some(receipt.into()),
                 public_output: result_json,
                 proof_response: Some(Proof {
                     image_id: PROVE_ID.to_vec(),
@@ -88,9 +85,9 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
                 &pi,
                 None,
             );
+            println!("{:?}","no receipt verification");
             let (result_json,metadata_json):(String,String) = receipt.journal.decode().unwrap();
             let reply = ProveResponse {
-                //receipt: Some(receipt.into()),
                 public_output: result_json,
                 proof_response: Some(Proof {
                     image_id: PROVE_ID.to_vec(),
@@ -100,44 +97,58 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
             };
             return Ok(Response::new(reply))
         }
-        //let (response_value, qfilter_json): (f64, String) =
-        //    receipt.journal.decode::<(f64, String)>().unwrap();
-        //let response_2 = receipt.journal.decode().unwrap();
-
-        //let filter: qfilter::Filter = serde_json::from_str(&qfilter_json).unwrap();
-        //println!("\n filter: {:?}", &filter);
-        //println!("{:?}",filter);
        
+    }
+    async fn combined(
+        &self,
+        request: Request<CombinedRequest>,
+    ) -> Result<Response<ProveResponse>, Status> {
+        println!("Got a combined request");
+
+        let request = request.into_inner();
+        //println!("{:?}",&request.method_payload.to_string());
+        let receipt: Receipt = combined_method(
+            &request.method_payload.to_string(),
+        );
+        let (result_json,metadata_json):(String,String) = receipt.journal.decode().unwrap();
+        let reply = ProveResponse {
+            public_output: result_json,
+            proof_response: Some(Proof {
+                image_id: COMBINED_ID.to_vec(),
+                receipt: bincode::serialize(&receipt).unwrap(),
+            }),
+            proof_chain: vec![],
+        };
+        return Ok(Response::new(reply))
     }
 
     async fn compose(
         &self,
         request: Request<CompositionRequest>,
     ) -> Result<Response<CompositionResponse>, Status> {
+        println!("Got a composition request");
         let request = request.into_inner();
-        let receipts: Vec<Receipt> = request
-            .proof_chain
-            .iter()
-            .map(|proof| {
-                let receipt: Receipt = bincode::deserialize(&proof.receipt).unwrap();
-                receipt
-            })
-            .collect();
+        let proofs: Vec<Proof> = request
+            .proof_chain;
 
-        let composite_receipt = "sd";//perform_composite_prove(receipts, VERIFIABLE_PROCESSING_ID)
+        let mut prev = proofs[0].clone();
+        let mut result: Receipt = bincode::deserialize(&proofs[0].receipt).unwrap();
+        for current in &proofs[1..] {
+            result = compose_method(&prev, current);
+            prev = Proof{image_id : COMPOSE_ID.to_vec(), receipt: bincode::serialize(&result).unwrap()};
+        }
+        //let composite_receipt = compose_method(&receipts[0], &receipts[1]);
             //.expect("Failed to prove composite receipt");
+        println!("Receipt vector created");
 
         // TODO: Implement code for retrieving receipt journal here.
 
         let reply = CompositionResponse {
             proof_response: Some(Proof {
-                image_id: vec![0],
-                receipt: bincode::serialize(&composite_receipt).unwrap(),
+                image_id: COMPOSE_ID.to_vec(),
+                receipt: bincode::serialize(&result).unwrap(),
             }),
-            proof_chain: vec![Proof {
-                image_id: vec![0],
-                receipt: vec![0],
-            }],
+            proof_chain: vec![],
         };
         Ok(Response::new(reply))
     }
@@ -146,6 +157,7 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
         &self,
         request: Request<VerifyRequest>,
     ) -> Result<Response<VerifyResponse>, Status> {
+        println!("Got a verification request");
         let request = request.into_inner();
         let proof = request
             .proof
@@ -158,6 +170,7 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
         //print_type_of(&req.receipt);
         //let receipt = Receipt::from(request.receipt.unwrap());
         let verification_result = receipt.verify(image_id);
+        let public_data = receipt.journal.decode().unwrap();
 
         //println!("{:?}",receipt.journal.);
         let reply: VerifyResponse;
@@ -165,13 +178,13 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
             Ok(_) => {
                 reply = VerifyResponse {
                     is_valid_executed: true,
-                    public_output: "public_output".to_string(),
+                    public_output: public_data,
                 };
             }
             Err(err) => {
                 reply = VerifyResponse {
                     is_valid_executed: false,
-                    public_output: "public_output".to_string(),
+                    public_output: public_data,
                 };
                 println!("{:?}", err)
             }
