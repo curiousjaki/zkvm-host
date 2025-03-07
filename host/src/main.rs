@@ -246,6 +246,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("VerifiableProcessingService listening on {}", addr);
 
     Server::builder()
+        //.max_frame_size( * 1024 * 1024-10) // Set max frame size to 1GB
+        .max_frame_size(16 * 1024 * 1024-10) // Set max frame size to 1GB
+        //.max_encoding_message_size(1024 * 1024 * 1024-10) // Set max message size to 1GB
         .add_service(VerifiableProcessingServiceServer::new(vpssi))
         .serve(addr)
         .await?;
