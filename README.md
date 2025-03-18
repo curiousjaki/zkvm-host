@@ -1,7 +1,5 @@
-# Proof on a move (POAM) server
-```
-RUST_LOG="info" RISC0_DEV_MODE=0 cargo test --release -- --nocapture
-```
+# zkVM service task worker with the PCF guest program
+
 ## Quick Start
 
 First, make sure [rustup] is installed. The
@@ -13,6 +11,11 @@ command:
 
 ```bash
 cargo run
+```
+
+### Run the proving and verification service task worker
+```bash
+RUST_LOG="info" RISC0_DEV_MODE=0 cargo test --release -- --nocapture
 ```
 
 ### Executing the project locally in development mode
@@ -27,35 +30,20 @@ RUST_LOG="info" RISC0_DEV_MODE=1 cargo run
 
 ## Directory Structure
 
-It is possible to organize the files for these components in various ways.
-However, in this starter template we use a standard directory structure for zkVM
-applications, which we think is a good starting point for your applications.
+These guest programs were used throughout the experiment:
 
-```text
-project_name
-├── Cargo.toml
-├── host
-│   ├── Cargo.toml
-│   └── src
-│       └── main.rs                    <-- [Host code goes here]
-└── methods
-    ├── Cargo.toml
-    ├── build.rs
-    ├── guest
-    │   ├── Cargo.toml
-    │   └── src
-    │       └── method_name.rs         <-- [Guest code goes here]
-    └── src
-        └── lib.rs
-```
+
+- This is the main proving guest program highlighted in the paper: [methods/guest/src/bin/prove.rs](methods/guest/src/bin/prove.rs)
+- The single step guest program: [methods/guest/src/bin/combined.rs](methods/guest/src/bin/combined.rs)
+- The final composion program: [methods/guest/src/bin/compose.rs](methods/guest/src/bin/compose.rs)
 
 
 ## Helpful links
 
-[cargo-risczero]: https://docs.rs/cargo-risczero
-[risc0-build]: https://docs.rs/risc0-build
-[risc0-repo]: https://www.github.com/risc0/risc0
-[risc0-zkvm]: https://docs.rs/risc0-zkvm
-[rustup]: https://rustup.rs
-[rust-toolchain]: rust-toolchain.toml
-[zkvm-overview]: https://dev.risczero.com/zkvm
+- [cargo-risczero](https://docs.rs/cargo-risczero)
+- [risc0-build](https://docs.rs/risc0-build)
+- [risc0-repo](https://www.github.com/risc0/risc0)
+- [risc0-zkvm](https://docs.rs/risc0-zkvm)
+- [rustup](https://rustup.rs)
+- [rust-toolchain](rust-toolchain.toml)
+- [zkvm-overview](https://dev.risczero.com/zkvm)
