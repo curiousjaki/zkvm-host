@@ -22,6 +22,7 @@ qfilter = { version = "0.2.1", features = ['serde','jsonschema'] }
 serde_bytes = "0.11"
 rules = { path = "../rules" }
 once_cell = "1.20.2"
+poam_helper = {path="../poam_helper"}
 
 [features]
 metal = ["risc0-zkvm/metal"]

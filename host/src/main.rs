@@ -10,7 +10,7 @@ use operations::{OperationRequest,Operation};
 // The ELF is used for proving and the ID is used for verification.
 use anyhow::Error;
 use methods::{
-    PROVE_ID, PROVE_ELF, COMPOSE_ID, COMPOSE_ELF, VERIFY_ID, VERIFY_ELF, COMBINED_ID, COMBINED_ELF,
+    PROVE_ID, PROVE_ELF, COMPOSE_ID, COMPOSE_ELF, COMBINED_ID, COMBINED_ELF,
 };
 use host::{prove_method, compose_method, combined_method};//,perform_composite_prove};
 
@@ -38,67 +38,32 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
 
         let request = request.into_inner();
 
-        let previous_proof: Option<Proof> = request
-                    .poam_metadata
-                    .ok_or(Status::invalid_argument("Missing poam metadata"))?
-                    .previous_proof;
-
-        if previous_proof.is_some() {
-            let previous_receipt: Receipt = bincode::deserialize(&previous_proof.unwrap().receipt).unwrap();
-            let (previous_result_json,previous_metadata_json):(String,String) = previous_receipt.journal.decode().unwrap();
-            let pi: PoamInput = PoamInput {
-                image_id: PROVE_ID,
-                rule_input: RuleInput {
-                    rules: None,
-                    ordering_rules: None,
-                },
-                public_data: Some((previous_result_json,previous_metadata_json)),
-            };
-            let receipt: Receipt = prove_method(
-                &request.method_payload,
-                &pi,
-                Some(previous_receipt),
-            );
-            println!("{:?}","with receipt verification");
-
-            let (result_json,metadata_json):(String,String) = receipt.journal.decode().unwrap();
+        //let previous_receipt: Option<Receipt> = match request.previous_proof {
+        //    Some(previous_proof) => {
+        //        println!("Previous proof found");
+        //        Some(bincode::deserialize(&previous_proof.receipt).unwrap())
+        //    }
+        //    None => {
+        //        println!("No previous proof found");
+        //        None
+        //    }
+        //};
+        let receipt: Receipt = prove_method(
+            request.method_payload,
+            request.previous_proof,
+            PROVE_ID,
+        );
+        let (result_json,metadata_json):(String,String) = receipt.journal.decode().unwrap();
             let reply = ProveResponse {
                 public_output: result_json,
                 proof_response: Some(Proof {
                     image_id: PROVE_ID.to_vec(),
                     receipt: bincode::serialize(&receipt).unwrap(),
-                }),
-                proof_chain: vec![],
+                })
             };
-            return Ok(Response::new(reply))
-        } else{
-            let pi: PoamInput = PoamInput {
-                image_id: PROVE_ID,
-                rule_input: RuleInput {
-                    rules: None,
-                    ordering_rules: None,
-                },
-                public_data: None,
-            };
-            let receipt: Receipt = prove_method(
-                &request.method_payload,
-                &pi,
-                None,
-            );
-            println!("{:?}","no receipt verification");
-            let (result_json,metadata_json):(String,String) = receipt.journal.decode().unwrap();
-            let reply = ProveResponse {
-                public_output: result_json,
-                proof_response: Some(Proof {
-                    image_id: PROVE_ID.to_vec(),
-                    receipt: bincode::serialize(&receipt).unwrap(),
-                }),
-                proof_chain: vec![],
-            };
-            return Ok(Response::new(reply))
-        }
-       
+        return Ok(Response::new(reply))
     }
+
     async fn combined(
         &self,
         request: Request<CombinedRequest>,
@@ -116,8 +81,7 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
             proof_response: Some(Proof {
                 image_id: COMBINED_ID.to_vec(),
                 receipt: bincode::serialize(&receipt).unwrap(),
-            }),
-            proof_chain: vec![],
+            })
         };
         return Ok(Response::new(reply))
     }
@@ -239,6 +203,8 @@ fn main2() {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("{:?}",PROVE_ID);
+
     let addr = "[::1]:50051".parse()?;
     let vpssi: VerifiableProcessingServiceServerImplementation =
         VerifiableProcessingServiceServerImplementation::default();

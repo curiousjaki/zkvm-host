@@ -1,15 +1,13 @@
 use std::collections::HashMap;
 use rules::event_filter::InsertEvent;
 use operations::{Operation, OperationRequest};
+use poam_helper::VerificationMetadata;
 use rules::conformance::{PoamInput, PoamMetadata, RuleInput};
-use rules::{CardinalityRule, PrecedenceRule, Rule};
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use methods::{
-    COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID, VERIFY_ELF, VERIFY_ID, COMBINED_ELF, COMBINED_ID
+    COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID, COMBINED_ELF, COMBINED_ID
 };
 use serde_json::{from_str, Value};
-use qfilter::Filter;
-use anyhow::Error;
 use once_cell::sync::Lazy;
 pub mod proto {
     tonic::include_proto!("poam");
@@ -19,38 +17,34 @@ use proto::Proof;
 static ELF_MAP: Lazy<HashMap<[u32; 8], &[u8]>> = Lazy::new(|| {
     HashMap::from([
         (PROVE_ID, PROVE_ELF),
-        (COMPOSE_ID, COMPOSE_ELF),
-        (VERIFY_ID, VERIFY_ELF),
+        (COMPOSE_ID, COMPOSE_ELF)
     ])
 });
 
-
-pub fn prove_method(
-    method_payload: &String,
-    pi: &PoamInput,
-    previous_receipt: Option<Receipt>,
-) -> Receipt {
-    println!("Build Proof and send to vm");
-    //let method_payload = operations::OperationRequest { a, b, operation };
-    let ser_pi: String =
-        serde_json::to_string(&pi).unwrap();
+pub fn prove_method(method_payload: String, previous_proof: Option<Proof>, image_id: [u32; 8],) -> Receipt {
     let mut env_builder = ExecutorEnv::builder();
-    match previous_receipt {
-        Some(receipt) => {
-            env_builder.add_assumption(receipt);
+    let verification_metadata: Option<VerificationMetadata> = match previous_proof {
+        Some(proof) => {
+            let previous_receipt: Receipt = bincode::deserialize(&proof.receipt).unwrap();
+            let metadata = VerificationMetadata {
+                image_id: proof.image_id.try_into().expect("Expected image_id to be a [u32; 8]"),
+                journal_data: previous_receipt.journal.decode().unwrap(),
+            };
+            env_builder.add_assumption(previous_receipt);
+            Some(metadata)
         }
-        None => {}
-    }
+        None => None,
+    };
 
     let env = env_builder
         .write(&method_payload)
         .unwrap()
-        .write(&ser_pi)
+        .write(&serde_json::to_string(&verification_metadata).unwrap())
         .unwrap()
         .build()
         .unwrap();
     // read the input
-    let elf = ELF_MAP.get(&pi.image_id).unwrap();
+    let elf = ELF_MAP.get(&image_id).unwrap();
     let prover = default_prover();
     let prove_info = prover.prove(env, elf).unwrap();
     return prove_info.receipt;
@@ -114,37 +108,6 @@ pub fn combined_method(method_payload: &String) -> Receipt{
     let composition = combiner.prove(env, COMBINED_ELF).unwrap();
     return composition.receipt;
 }
-
-//pub fn perform_composite_prove(receipts: Vec<Receipt>, image_id: [u32; 8]) -> Result<Receipt, Error> {
-//    let mut env_builder = ExecutorEnv::builder();
-//    let mut cpi: Vec<CompositeProofInput> = Vec::new();
-//    for r in receipts.iter() {
-//        //println!("{:?}",r.metadata);
-//        env_builder.add_assumption(r.clone());
-//        cpi.push(CompositeProofInput{image_id:image_id.clone(),public_data: r.journal.decode().unwrap()});
-//    }
-//    let cpi_string = serde_json::to_string(&cpi).unwrap();
-//    println!("{:?}",cpi_string);
-//    let env = env_builder
-//        .write(&cpi_string)
-//        .unwrap()
-//        .build()
-//        .unwrap();
-//
-//    let prover = default_prover();
-//    // read the input
-//    let prove = prover.prove(env, COMPOSITE_PROVING_ELF);
-//    match prove {
-//        Ok(prove_info) => {
-//            return Ok(prove_info.receipt);
-//        }
-//        Err(e) => {
-//            return Err(e);
-//        }
-//    }
-//}
-
-
 
 #[cfg(test)]
 mod tests {
