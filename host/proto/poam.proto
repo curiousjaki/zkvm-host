@@ -43,5 +43,5 @@ message VerifyResponse {
 } 
 
 message CombinedRequest {
-    string method_payload = 1;
+    repeated string method_payload = 1;
 }

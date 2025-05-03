@@ -45,7 +45,7 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
         println!("Got a combined request");
 
         let request = request.into_inner();
-        let receipt: Receipt = combined_method(&request.method_payload.to_string());
+        let receipt: Receipt = combined_method(request.method_payload);
         let (result_json, _metadata_json): (String, String) = receipt.journal.decode().unwrap();
         let reply = ProveResponse {
             public_output: result_json,

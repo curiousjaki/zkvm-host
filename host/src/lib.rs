@@ -1,4 +1,4 @@
-use methods::{COMBINED_ELF, COMBINED_ID, COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID};
+use methods::{COMBINED_ELF, COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID};
 use once_cell::sync::Lazy;
 use operations::{Operation, OperationRequest};
 use poam_helper::VerificationMetadata;
@@ -79,22 +79,21 @@ pub fn compose_method(p1: &Proof, p2: &Proof) -> Receipt {
     return composition.receipt;
 }
 
-pub fn combined_method(method_payload: &String) -> Receipt {
+pub fn combined_method(method_payload: Vec<String> ) -> Receipt {
     //println!("{:?}",method_payload);
-    let json_value: Value = serde_json::from_str(&method_payload).expect("Failed to parse JSON");
+    //let json_value: Value = serde_json::from_str(&method_payload).expect("Failed to parse JSON");
     //println!("{:?}",json_value);
     let mut operation_requests: Vec<OperationRequest> = Vec::new();
-    if let Value::Object(map) = json_value {
-        for (_key, value) in &map {
-            if let Value::Object(inner_map) = value {
-                let operation: Operation = from_str(&inner_map["operation"].to_string()).unwrap();
-                let operation_request = OperationRequest {
-                    a: inner_map["a"].as_f64().unwrap(),
-                    b: inner_map["b"].as_f64().unwrap(),
-                    operation: operation,
-                };
-                operation_requests.push(operation_request);
-            }
+    //if let Value::Object(map) = json_value {
+    for (_key, value) in method_payload.iter().enumerate() {
+        if let Ok(Value::Object(inner_map)) = serde_json::from_str::<Value>(value) {
+            let operation: Operation = from_str(&inner_map["operation"].to_string()).unwrap();
+            let operation_request = OperationRequest {
+                a: inner_map["a"].as_f64().unwrap(),
+                b: inner_map["b"].as_f64().unwrap(),
+                operation: operation,
+            };
+            operation_requests.push(operation_request);
         }
     }
     //println!("{:?}",&operation_requests);
