@@ -1,36 +1,29 @@
 //#![no_std] 
 //#![no_main]
 use risc0_zkvm::{guest::env, serde};
-use rules::conformance::{PoamInput,RuleInput,PoamMetadata};
 
 use std::string::String;
 use serde_json::from_str;
+use poam_helper::VerificationMetadata;
 
 fn main() {
     let ser_image_id: String = env::read();
     let image_id: [u32; 8] = from_str(&ser_image_id).unwrap();
     
-    let ser_po1: String = env::read();
-    let ser_po2: String = env::read();
-    let decoded_p1: (String, String) = from_str(&ser_po1).unwrap();
-    let decoded_p2: (String, String) = from_str(&ser_po2).unwrap();
+    let ser_vm1: String = env::read();
+    let ser_vm2: String = env::read();
+    let p1_vm: VerificationMetadata = from_str(&ser_vm1).unwrap();
+    let p2_vm: VerificationMetadata = from_str(&ser_vm2).unwrap();
 
-    
-    let result1: f64 = from_str(&decoded_p1.0).unwrap();
-    let result2: f64 = from_str(&decoded_p2.0).unwrap();
-    let mut pm1 : PoamMetadata = from_str(&decoded_p1.1).unwrap();
-    let mut pm2 : PoamMetadata = from_str(&decoded_p2.1).unwrap();
+    let result1: f64 = from_str(&p1_vm.journal_data.0).unwrap();
+    let result2: f64 = from_str(&p2_vm.journal_data.0).unwrap();
 
-    env::verify(pm1.image_id, &serde::to_vec(&decoded_p1).unwrap()).unwrap();
-    env::verify(pm2.image_id, &serde::to_vec(&decoded_p2).unwrap()).unwrap();
+    env::verify(p1_vm.image_id, &serde::to_vec(&p1_vm.journal_data).unwrap()).unwrap();
+    env::verify(p2_vm.image_id, &serde::to_vec(&p2_vm.journal_data).unwrap()).unwrap();
 
     let result = result1 + result2;
-    let metadata = PoamMetadata {
-        was_first_event: false,
-        image_id: image_id,
-        qf: qfilter::Filter::new(1, 0.01).unwrap()
-    };
-    let result_json: String = serde_json::to_string(&result).unwrap();
-    let pm_json: String = serde_json::to_string(&metadata).unwrap();
-    env::commit(&(result_json,pm_json));
+
+    let serialized_result_json: String = serde_json::to_string(&result).unwrap();
+    let serialized_metadata_json: String = serde_json::to_string(false).unwrap();
+    env::commit(&(serialized_result_json,serialized_metadata_json));
 }

@@ -1,8 +1,6 @@
-use std::collections::HashMap;
-use rules::event_filter::InsertEvent;
+use std::{collections::HashMap, convert};
 use operations::{Operation, OperationRequest};
 use poam_helper::VerificationMetadata;
-use rules::conformance::{PoamInput, PoamMetadata, RuleInput};
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
 use methods::{
     COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID, COMBINED_ELF, COMBINED_ID
@@ -21,17 +19,21 @@ static ELF_MAP: Lazy<HashMap<[u32; 8], &[u8]>> = Lazy::new(|| {
     ])
 });
 
+fn convert_proof_to_serialized_verification_metadata(proof: &Proof) -> VerificationMetadata {
+    let receipt: Receipt = bincode::deserialize(&proof.receipt).unwrap();
+    VerificationMetadata {
+        image_id: proof.image_id.try_into().expect("Expected image_id to be a [u32; 8]"),
+        journal_data: receipt.journal.decode().unwrap(),
+    }
+}
+
 pub fn prove_method(method_payload: String, previous_proof: Option<Proof>, image_id: [u32; 8],) -> Receipt {
     let mut env_builder = ExecutorEnv::builder();
     let verification_metadata: Option<VerificationMetadata> = match previous_proof {
         Some(proof) => {
             let previous_receipt: Receipt = bincode::deserialize(&proof.receipt).unwrap();
-            let metadata = VerificationMetadata {
-                image_id: proof.image_id.try_into().expect("Expected image_id to be a [u32; 8]"),
-                journal_data: previous_receipt.journal.decode().unwrap(),
-            };
             env_builder.add_assumption(previous_receipt);
-            Some(metadata)
+            Some(convert_proof_to_verification_metadata(&proof))
         }
         None => None,
     };
@@ -53,24 +55,24 @@ pub fn prove_method(method_payload: String, previous_proof: Option<Proof>, image
 
 pub fn compose_method(p1: &Proof, p2: &Proof) -> Receipt{
     let p1_receipt: Receipt = bincode::deserialize(&p1.receipt).unwrap();
-    let decoded_p1: (String, String) = p1_receipt.journal.decode().unwrap();
-    let ser_po1: String = serde_json::to_string(&decoded_p1).unwrap();
+    let p1_vm: VerificationMetadata = convert_proof_to_verification_metadata(&p1);
     let p2_receipt: Receipt = bincode::deserialize(&p2.receipt).unwrap();
-    let decoded_p2: (String, String) = p2_receipt.journal.decode().unwrap();
-    let ser_po2: String = serde_json::to_string(&decoded_p2).unwrap();
+    let p2_vm: VerificationMetadata = convert_proof_to_verification_metadata(&p2);
+
     let mut env_builder = ExecutorEnv::builder();
     env_builder.add_assumption(p1_receipt);
     env_builder.add_assumption(p2_receipt);
-    println!("Compose Method");
+
     let env = env_builder
         .write(&serde_json::to_string(&COMPOSE_ID.to_vec()).unwrap())
         .unwrap()
-        .write(&ser_po1)
+        .write(&serde_json::to_string(&p1_vm).unwrap())
         .unwrap()
-        .write(&ser_po2)
+        .write(&serde_json::to_string(&p2_vm).unwrap())
         .unwrap()
         .build()
         .unwrap();
+
     let composer = default_prover();
     let composition = composer.prove(env, COMPOSE_ELF).unwrap();
     return composition.receipt;
@@ -105,8 +107,8 @@ pub fn combined_method(method_payload: &String) -> Receipt{
         .build()
         .unwrap();
     let combiner = default_prover();
-    let composition = combiner.prove(env, COMBINED_ELF).unwrap();
-    return composition.receipt;
+    let combined = combiner.prove(env, COMBINED_ELF).unwrap();
+    return combined.receipt;
 }
 
 #[cfg(test)]
