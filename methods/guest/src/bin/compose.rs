@@ -7,8 +7,8 @@ use serde_json::from_str;
 use poam_helper::VerificationMetadata;
 
 fn main() {
-    let ser_image_id: String = env::read();
-    let image_id: [u32; 8] = from_str(&ser_image_id).unwrap();
+    //let ser_image_id: String = env::read();
+    //let image_id: [u32; 8] = from_str(&ser_image_id).unwrap();
     
     let ser_vm1: String = env::read();
     let ser_vm2: String = env::read();
@@ -24,6 +24,6 @@ fn main() {
     let result = result1 + result2;
 
     let serialized_result_json: String = serde_json::to_string(&result).unwrap();
-    let serialized_metadata_json: String = serde_json::to_string(false).unwrap();
+    let serialized_metadata_json: String = serde_json::to_string(&false).unwrap();
     env::commit(&(serialized_result_json,serialized_metadata_json));
 }

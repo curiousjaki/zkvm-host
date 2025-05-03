@@ -1,33 +1,35 @@
-use std::{collections::HashMap, convert};
+use methods::{COMBINED_ELF, COMBINED_ID, COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID};
+use once_cell::sync::Lazy;
 use operations::{Operation, OperationRequest};
 use poam_helper::VerificationMetadata;
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
-use methods::{
-    COMPOSE_ELF, COMPOSE_ID, PROVE_ELF, PROVE_ID, COMBINED_ELF, COMBINED_ID
-};
 use serde_json::{from_str, Value};
-use once_cell::sync::Lazy;
+use std::collections::HashMap;
 pub mod proto {
     tonic::include_proto!("poam");
 }
 use proto::Proof;
 
-static ELF_MAP: Lazy<HashMap<[u32; 8], &[u8]>> = Lazy::new(|| {
-    HashMap::from([
-        (PROVE_ID, PROVE_ELF),
-        (COMPOSE_ID, COMPOSE_ELF)
-    ])
-});
+static ELF_MAP: Lazy<HashMap<[u32; 8], &[u8]>> =
+    Lazy::new(|| HashMap::from([(PROVE_ID, PROVE_ELF), (COMPOSE_ID, COMPOSE_ELF)]));
 
-fn convert_proof_to_serialized_verification_metadata(proof: &Proof) -> VerificationMetadata {
+fn convert_proof_to_verification_metadata(proof: &Proof) -> VerificationMetadata {
     let receipt: Receipt = bincode::deserialize(&proof.receipt).unwrap();
     VerificationMetadata {
-        image_id: proof.image_id.try_into().expect("Expected image_id to be a [u32; 8]"),
+        image_id: proof
+            .image_id
+            .clone()
+            .try_into()
+            .expect("Expected image_id to be a [u32; 8]"),
         journal_data: receipt.journal.decode().unwrap(),
     }
 }
 
-pub fn prove_method(method_payload: String, previous_proof: Option<Proof>, image_id: [u32; 8],) -> Receipt {
+pub fn prove_method(
+    method_payload: String,
+    previous_proof: Option<Proof>,
+    image_id: [u32; 8],
+) -> Receipt {
     let mut env_builder = ExecutorEnv::builder();
     let verification_metadata: Option<VerificationMetadata> = match previous_proof {
         Some(proof) => {
@@ -52,8 +54,7 @@ pub fn prove_method(method_payload: String, previous_proof: Option<Proof>, image
     return prove_info.receipt;
 }
 
-
-pub fn compose_method(p1: &Proof, p2: &Proof) -> Receipt{
+pub fn compose_method(p1: &Proof, p2: &Proof) -> Receipt {
     let p1_receipt: Receipt = bincode::deserialize(&p1.receipt).unwrap();
     let p1_vm: VerificationMetadata = convert_proof_to_verification_metadata(&p1);
     let p2_receipt: Receipt = bincode::deserialize(&p2.receipt).unwrap();
@@ -64,8 +65,8 @@ pub fn compose_method(p1: &Proof, p2: &Proof) -> Receipt{
     env_builder.add_assumption(p2_receipt);
 
     let env = env_builder
-        .write(&serde_json::to_string(&COMPOSE_ID.to_vec()).unwrap())
-        .unwrap()
+        //.write(&serde_json::to_string(&COMPOSE_ID.to_vec()).unwrap())
+        //.unwrap()
         .write(&serde_json::to_string(&p1_vm).unwrap())
         .unwrap()
         .write(&serde_json::to_string(&p2_vm).unwrap())
@@ -78,19 +79,19 @@ pub fn compose_method(p1: &Proof, p2: &Proof) -> Receipt{
     return composition.receipt;
 }
 
-pub fn combined_method(method_payload: &String) -> Receipt{
+pub fn combined_method(method_payload: &String) -> Receipt {
     //println!("{:?}",method_payload);
     let json_value: Value = serde_json::from_str(&method_payload).expect("Failed to parse JSON");
     //println!("{:?}",json_value);
     let mut operation_requests: Vec<OperationRequest> = Vec::new();
     if let Value::Object(map) = json_value {
-        for (key, value) in &map {
+        for (_key, value) in &map {
             if let Value::Object(inner_map) = value {
-                let operation : Operation = from_str(&inner_map["operation"].to_string()).unwrap();
+                let operation: Operation = from_str(&inner_map["operation"].to_string()).unwrap();
                 let operation_request = OperationRequest {
                     a: inner_map["a"].as_f64().unwrap(),
                     b: inner_map["b"].as_f64().unwrap(),
-                    operation: operation
+                    operation: operation,
                 };
                 operation_requests.push(operation_request);
             }
@@ -100,8 +101,8 @@ pub fn combined_method(method_payload: &String) -> Receipt{
 
     let mut env_builder = ExecutorEnv::builder();
     let env = env_builder
-        .write(&serde_json::to_string(&COMBINED_ID.to_vec()).unwrap())
-        .unwrap()
+        //.write(&serde_json::to_string(&COMBINED_ID.to_vec()).unwrap())
+        //.unwrap()
         .write(&serde_json::to_string(&operation_requests).unwrap())
         .unwrap()
         .build()
@@ -117,11 +118,11 @@ mod tests {
 
     use super::*;
 
-   //RISC0_DEV_MODE=0 RUST_LOG=info cargo test --release -- --nocapture
+    //RISC0_DEV_MODE=0 RUST_LOG=info cargo test --release -- --nocapture
     #[test]
-    fn test_proving_method(){
+    fn test_proving_method() {
         println!("Starting the Program");
-        println!("Prove ID: {:?}",PROVE_ID);
+        println!("Prove ID: {:?}", PROVE_ID);
         //env_logger::init();
         // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
 
@@ -134,16 +135,19 @@ mod tests {
         //let mut qf = Filter::new(100, 0.01)
         //    .expect("Failed to create filter");
         //qf.insert_event(VERIFIABLE_PROCESSING_ID).unwrap();
-        
+
         let rules1: Vec<Rule> = vec![Rule::Precedence(PrecedenceRule {
-        //current: VERIFIABLE_PROCESSING_ID,
-        preceeding: PROVE_ID,
+            //current: VERIFIABLE_PROCESSING_ID,
+            preceeding: PROVE_ID,
         })];
 
-        let method_payload1 = serde_json::to_string(
-            &OperationRequest{a: 1.0, b: 2.0, operation: Operation::Add })
-            .unwrap();
-        println!("Method Payload: {}",method_payload1);
+        let method_payload1 = serde_json::to_string(&OperationRequest {
+            a: 1.0,
+            b: 2.0,
+            operation: Operation::Add,
+        })
+        .unwrap();
+        println!("Method Payload: {}", method_payload1);
 
         let pi1: PoamInput = PoamInput {
             image_id: PROVE_ID,
@@ -155,12 +159,10 @@ mod tests {
             public_data: None,
         };
 
-        let receipt1 = prove_method(
-            &method_payload1,
-            &pi1,None);
+        let receipt1 = prove_method(&method_payload1, &pi1, None);
         //&receipt1.verify(cm.current_image_id).unwrap();
-        let (result_json,metadata_json):(String,String) = receipt1.journal.decode().unwrap();
-        println!("Result: {}, Metadata: {}",result_json, metadata_json);
+        let (result_json, metadata_json): (String, String) = receipt1.journal.decode().unwrap();
+        println!("Result: {}, Metadata: {}", result_json, metadata_json);
 
         let pi2: PoamInput = PoamInput {
             image_id: PROVE_ID,
@@ -169,14 +171,12 @@ mod tests {
                 rules: Some(rules1),
                 ordering_rules: None,
             },
-            public_data: Some((result_json,metadata_json)),
+            public_data: Some((result_json, metadata_json)),
         };
-        let receipt2 = prove_method(
-            &method_payload1,
-            &pi2,Some(receipt1));
+        let receipt2 = prove_method(&method_payload1, &pi2, Some(receipt1));
         //&receipt1.verify(cm.current_image_id).unwrap();
-        let (result_json2,metadata_json2):(String,String) = receipt2.journal.decode().unwrap();
-        println!("Result: {}, Metadata: {}",result_json2, metadata_json2);
+        let (result_json2, metadata_json2): (String, String) = receipt2.journal.decode().unwrap();
+        println!("Result: {}, Metadata: {}", result_json2, metadata_json2);
 
         //let receipts: Vec<Receipt> = vec![receipt1]; //, receipt2, receipt3, receipt4];//, receipt3, receipt4];
         //println!("Receipt vector created");

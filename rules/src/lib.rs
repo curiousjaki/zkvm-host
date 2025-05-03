@@ -1,17 +1,17 @@
-pub mod event_filter;
 pub mod conformance;
+pub mod event_filter;
 use event_filter::FollowedBy;
 pub trait RuleChecker {
-    fn check(&self, qf: &qfilter::Filter,previous_image_id: &[u32;8]) -> bool;
+    fn check(&self, qf: &qfilter::Filter, previous_image_id: &[u32; 8]) -> bool;
 }
 
 impl RuleChecker for Rule {
-    fn check(&self, qf: &qfilter::Filter, previous_image_id: &[u32;8]) -> bool {
+    fn check(&self, qf: &qfilter::Filter, previous_image_id: &[u32; 8]) -> bool {
         match self {
             Rule::Precedence(rule) => rule.check(qf, previous_image_id),
-            Rule::Cardinality(rule) => rule.check(qf,previous_image_id),
-            Rule::Exclusiveness(rule) => rule.check(qf,previous_image_id),
-            Rule::Ordering(rule) => rule.check(qf,previous_image_id),
+            Rule::Cardinality(rule) => rule.check(qf, previous_image_id),
+            Rule::Exclusiveness(rule) => rule.check(qf, previous_image_id),
+            Rule::Ordering(rule) => rule.check(qf, previous_image_id),
         }
     }
 }
@@ -22,7 +22,7 @@ pub struct PrecedenceRule {
     //prior_image_id: [u32; 8],
 }
 impl RuleChecker for PrecedenceRule {
-    fn check(&self, qf: &qfilter::Filter,previous_image_id: &[u32;8]) -> bool {
+    fn check(&self, qf: &qfilter::Filter, previous_image_id: &[u32; 8]) -> bool {
         if qf.contains(&self.preceeding) && self.preceeding == *previous_image_id {
             return true;
         }
@@ -38,7 +38,7 @@ pub struct CardinalityRule {
 }
 
 impl RuleChecker for CardinalityRule {
-    fn check(&self, qf: &qfilter::Filter,_previous_image_id: &[u32;8]) -> bool {
+    fn check(&self, qf: &qfilter::Filter, _previous_image_id: &[u32; 8]) -> bool {
         let mut mut_qf = qf.clone();
         if mut_qf.count(self.prior) >= self.min && mut_qf.count(self.prior) <= self.max {
             return true;
@@ -54,7 +54,7 @@ pub struct ExclusivenessRule {
 }
 
 impl RuleChecker for ExclusivenessRule {
-    fn check(&self, qf: &qfilter::Filter,_previous_image_id: &[u32;8]) -> bool {
+    fn check(&self, qf: &qfilter::Filter, _previous_image_id: &[u32; 8]) -> bool {
         if qf.contains(&self.prior_a) || qf.contains(&self.prior_b) {
             if qf.contains(&self.prior_a) && qf.contains(&self.prior_b) {
                 return false;
@@ -72,7 +72,7 @@ pub struct OrderingRule {
 }
 
 impl RuleChecker for OrderingRule {
-    fn check(&self, qf: &qfilter::Filter,_previous_image_id: &[u32;8]) -> bool {
+    fn check(&self, qf: &qfilter::Filter, _previous_image_id: &[u32; 8]) -> bool {
         if qf.contains(&FollowedBy {
             prior: self.prior,
             next: self.next,

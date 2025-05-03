@@ -1,5 +1,5 @@
-use rules::{CardinalityRule, PrecedenceRule, Rule, ExclusivenessRule, OrderingRule, RuleChecker};
 use rules::event_filter::InsertEvent;
+use rules::{CardinalityRule, ExclusivenessRule, OrderingRule, PrecedenceRule, Rule, RuleChecker};
 pub fn char_to_u32_array(ch: char) -> [u32; 8] {
     let mut result = [0u32; 8];
     let code_point = ch as u32; // Convert the char to its Unicode code point
@@ -16,18 +16,16 @@ pub fn generate_event_filter(events: [char; 5], or: Option<OrderingRule>) -> qfi
     //let  = ['a', 'a', 'b', 'c', preceeding_event];
     for event in events.iter() {
         match or {
-            Some(ref rule) => qf.insert_ordered_event(
-                char_to_u32_array(*event),
-                vec![rule],
-            )
-            .unwrap(),
+            Some(ref rule) => qf
+                .insert_ordered_event(char_to_u32_array(*event), vec![rule])
+                .unwrap(),
             None => qf.insert_event(char_to_u32_array(*event)).unwrap(),
         }
     }
     return qf;
 }
 
-pub fn generate_rule_set(preceeding_event:char) -> Vec<Rule> {
+pub fn generate_rule_set(preceeding_event: char) -> Vec<Rule> {
     let rules: Vec<Rule> = vec![
         Rule::Precedence(PrecedenceRule {
             preceeding: char_to_u32_array(preceeding_event),
@@ -63,34 +61,34 @@ mod tests {
     fn all_rules() {
         let preceeding_event = 'c';
         let qf: qfilter::Filter = generate_event_filter(
-                ['a', 'a', 'b', 'c', preceeding_event],
-                Some(OrderingRule {
+            ['a', 'a', 'b', 'c', preceeding_event],
+            Some(OrderingRule {
                 prior: char_to_u32_array('a'),
                 next: char_to_u32_array('c'),
-            }));
-        let rules: Vec<Rule> = generate_rule_set( preceeding_event);
+            }),
+        );
+        let rules: Vec<Rule> = generate_rule_set(preceeding_event);
         for rule in rules.iter() {
             println!("({:?})", rule);
-            assert_eq!(rule.check(&qf,&char_to_u32_array(preceeding_event)), true);
+            assert_eq!(rule.check(&qf, &char_to_u32_array(preceeding_event)), true);
         }
     }
-        //let filter_string = serde_json::to_string(&qf).unwrap();
-        //let cci = CompositeConformanceInput {
-        //    rule_input: serde_json::to_string(&RuleInput {
-        //        current_image_id: current_event,
-        //        rules: Some(rules),
-        //        ordering_rules: Some(vec![]),
-        //    }).unwrap(),
-        //    public_data: ("1".to_string(),"asdf".to_string()),
-        //    //previous_image_id: Some(current_event),
-        //    //current_image_id: current_event,
-        //    //rules: Some(rules),
-        //    //ordering_rules: Some(vec![]),
-        //    //qf:Some(qf),
-        //};
-        //let res = serde_json::to_string(&cm).unwrap();
-        //write a string to a file
-        //std::fs::write("rules.json", &res).unwrap();
-        //println!("{:?}", &res);
-        
-    }
+    //let filter_string = serde_json::to_string(&qf).unwrap();
+    //let cci = CompositeConformanceInput {
+    //    rule_input: serde_json::to_string(&RuleInput {
+    //        current_image_id: current_event,
+    //        rules: Some(rules),
+    //        ordering_rules: Some(vec![]),
+    //    }).unwrap(),
+    //    public_data: ("1".to_string(),"asdf".to_string()),
+    //    //previous_image_id: Some(current_event),
+    //    //current_image_id: current_event,
+    //    //rules: Some(rules),
+    //    //ordering_rules: Some(vec![]),
+    //    //qf:Some(qf),
+    //};
+    //let res = serde_json::to_string(&cm).unwrap();
+    //write a string to a file
+    //std::fs::write("rules.json", &res).unwrap();
+    //println!("{:?}", &res);
+}

@@ -4,19 +4,15 @@ use risc0_zkvm::{
     guest::env,
     serde
 };
-use operations::{
-    OperationRequest, 
-    Operation
-};
+use operations::OperationRequest;
 use std::string::String;
 use serde_json::from_str;
-use rules::event_filter::InsertEvent;
 use poam_helper::VerificationMetadata;
 
 fn verify_previous_receipt(ser_verification_metadata: String) -> (bool, f64) { //previous_verificaiton, public_data_output
     let verification_metadata: Option<VerificationMetadata> = 
     from_str(&ser_verification_metadata).unwrap();
-    eprintln!("{:?}", verification_metadata);
+    //eprintln!("{:?}", verification_metadata);
 
     match verification_metadata {
         Some(metadata) => {
