@@ -5,3 +5,4 @@ target/
 projects/
 test_data/
 proofs/*
+.vscode/
