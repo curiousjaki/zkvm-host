@@ -17,6 +17,7 @@ use call_methods::{combined_method, compose_method, prove_method};
 
 
 use risc0_zkvm::Receipt;
+use futures::future;
 use tonic::{Request, Response, Status};
 use methods::{COMBINED_ID, COMPOSE_ID, PROVE_ID}; //,perform_composite_prove};
 
@@ -63,12 +64,18 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
         let request = request.into_inner();
         let receipt: Receipt = combined_method(request.method_payload);
         let (result_json, _metadata_json): (String, String) = receipt.journal.decode().unwrap();
-        let reply = ProveResponse {
-            public_output: result_json,
-            proof_response: Some(Proof {
+        let mut proof_result = Proof {
                 image_id: COMBINED_ID.to_vec(),
                 receipt: bincode::serialize(&receipt).unwrap(),
-            }),
+            };
+        println!("Build Proof Result");
+        let proof_file = upload_proof(proof_result.clone()).await.ok().unwrap();
+        println!("{:?}", proof_file);
+        proof_result.receipt = bincode::serialize(&proof_file).unwrap();
+
+        let reply = ProveResponse {
+            public_output: result_json,
+            proof_response: Some(proof_result),
         };
         return Ok(Response::new(reply));
     }
@@ -79,7 +86,11 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
     ) -> Result<Response<CompositionResponse>, Status> {
         println!("Got a composition request");
         let request = request.into_inner();
-        let proofs: Vec<Proof> = request.proof_chain;
+        let proofs: Vec<Proof> = futures::future::join_all(
+            request.proof_chain.into_iter().map(|proof| download_proof(Some(proof)))
+        ).await.into_iter().collect::<Option<Vec<Proof>>>().unwrap();
+
+
 
         let mut prev = proofs[0].clone();
         let mut result: Receipt = bincode::deserialize(&proofs[0].receipt).unwrap();
@@ -90,13 +101,16 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
                 receipt: bincode::serialize(&result).unwrap(),
             };
         }
-
-        let reply = CompositionResponse {
-            proof_response: Some(Proof {
+        let mut proof_result = Proof {
                 image_id: COMPOSE_ID.to_vec(),
                 receipt: bincode::serialize(&result).unwrap(),
-            }),
-            proof_chain: vec![],
+            };
+        let proof_file = upload_proof(proof_result.clone()).await.ok().unwrap();
+        proof_result.receipt = bincode::serialize(&proof_file).unwrap();
+
+        let reply = CompositionResponse {
+            proof_response: Some(proof_result),
+            proof_chain: proofs,
         };
         Ok(Response::new(reply))
     }
@@ -110,11 +124,13 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
         let proof = request
             .proof
             .ok_or(Status::invalid_argument("Missing proof"))?;
-        let image_id: [u32; 8] = proof
+        let image_id: [u32; 8] = proof.clone()
             .image_id
             .try_into()
             .expect("Failed to convert Vec<u32> to [u32; 8]");
-        let receipt: Receipt = bincode::deserialize(&proof.receipt).unwrap();
+        let downloaded_proof: Proof = download_proof(Some(proof)).await.unwrap();
+
+        let receipt: Receipt = bincode::deserialize(&downloaded_proof.receipt).unwrap();
 
         let verification_result = receipt.verify(image_id);
         let public_data = receipt.journal.decode().unwrap();
