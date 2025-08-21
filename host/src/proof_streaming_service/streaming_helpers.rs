@@ -89,6 +89,7 @@ pub async fn download_proof(previous_proof: Option<Proof>) -> Option<Proof> {
             },
         }
     } else {
+        println!("The required proof was not provided.");
         None
     }
 }

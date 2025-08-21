@@ -10,11 +10,14 @@ use tonic::{transport::Server};
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{:?}", PROVE_ID);
 
-    let addr = "[::1]:50051".parse()?;
+    //let addr: std::net::SocketAddr = "[::1]:50051".parse()?;
     let vpssi: VerifiableProcessingServiceServerImplementation =
         VerifiableProcessingServiceServerImplementation::default();
 
-    println!("VerifiableProcessingService listening on {}", addr);
+    println!(
+        "VerifiableProcessingService listening on {}",
+        "0.0.0.0:50051"
+    );
 
     let filestramssi: MyFileStreamService =
         MyFileStreamService::default();
@@ -22,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::builder()
         .add_service(VerifiableProcessingServiceServer::new(vpssi))
         .add_service(FileStreamingServiceServer::new(filestramssi))
-        .serve(addr)
+        .serve(([0, 0, 0, 0], 50053).into())
         .await?;
 
     Ok(())

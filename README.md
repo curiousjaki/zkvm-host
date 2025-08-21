@@ -47,3 +47,6 @@ These guest programs were used throughout the experiment:
 - [rustup](https://rustup.rs)
 - [rust-toolchain](rust-toolchain.toml)
 - [zkvm-overview](https://dev.risczero.com/zkvm)
+
+
+docker build . -t ghcr.io/curiousjaki/zkvm-base:latest --platform linux/amd64 -f Dockerfile_Risc0_2.3.1

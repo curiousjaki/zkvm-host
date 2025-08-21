@@ -17,7 +17,7 @@ use call_methods::{combined_method, compose_method, prove_method};
 
 
 use risc0_zkvm::Receipt;
-use futures::future;
+//use futures::future;
 use tonic::{Request, Response, Status};
 use methods::{COMBINED_ID, COMPOSE_ID, PROVE_ID}; //,perform_composite_prove};
 
@@ -128,6 +128,7 @@ impl VerifiableProcessingService for VerifiableProcessingServiceServerImplementa
             .image_id
             .try_into()
             .expect("Failed to convert Vec<u32> to [u32; 8]");
+        println!("Proof: {:?}", proof);
         let downloaded_proof: Proof = download_proof(Some(proof)).await.unwrap();
 
         let receipt: Receipt = bincode::deserialize(&downloaded_proof.receipt).unwrap();
