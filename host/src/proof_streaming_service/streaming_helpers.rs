@@ -64,9 +64,13 @@ pub async fn download_proof(previous_proof: Option<Proof>) -> Option<Proof> {
                     receipt: buffer,
                 })
             },
-            Err(_) => None,
+            Err(_) => {
+                println!("Failed to download proof");
+                None
+            }
         }
     } else {
+        println!("The required proof was not provided.");
         None
     }
 }
