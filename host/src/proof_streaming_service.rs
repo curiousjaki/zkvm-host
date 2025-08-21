@@ -26,7 +26,7 @@ pub struct MyFileStreamService {}
 
 #[tonic::async_trait]
 impl FileStreamingService for MyFileStreamService {
-    type StreamFileStream = Pin<Box<dyn futures_core::Stream<Item = Result<FileChunk, Status>> + Send>>;
+    type StreamFileStream = Pin<Box<dyn futures::Stream<Item = Result<FileChunk, Status>> + Send>>;
 
     async fn stream_file(
         &self,

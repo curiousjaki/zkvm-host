@@ -1,3 +1,6 @@
+use std::fs;
+use std::path::Path;
+
 //use super::super::proof_streaming_service::filestream::{
 //    file_streaming_service_client::FileStreamingServiceClient,
 //    FileRequest,
@@ -22,8 +25,24 @@ use super::filestream::{
 //    VerifyRequest, VerifyResponse,
 //};
 
+fn touch_path_directory() {
+    let path = Path::new("proofs");
+
+    // Create the directory if it doesn't exist
+    if !path.exists() {
+        fs::create_dir_all(&path).expect("Failed to create directory");
+        println!("Directory created: {:?}", path);
+    } else {
+        println!("Directory already exists: {:?}", path);
+    }
+}
+
+
+
 async fn download_file(client: &mut FileStreamingServiceClient<tonic::transport::Channel>,filename: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use sha2::{Sha256, Digest};
+
+    touch_path_directory();
 
     let request = FileRequest {
         file_name: filename.to_string(),
@@ -54,7 +73,7 @@ pub async fn download_proof(previous_proof: Option<Proof>) -> Option<Proof> {
     if let Some(proof) = previous_proof {
         let filename: String = bincode::deserialize(&proof.receipt).unwrap();
         //let filename = String::from_utf8(proof.receipt).ok()?;
-        let mut client = FileStreamingServiceClient::connect("http://[::1]:50052").await.ok()?;
+        let mut client = FileStreamingServiceClient::connect("http://proof-file-service:50052").await.ok()?;
         match download_file(&mut client, &filename).await {
             Ok(buffer) => {
                 // Assuming Receipt is defined and bincode is imported
@@ -64,7 +83,10 @@ pub async fn download_proof(previous_proof: Option<Proof>) -> Option<Proof> {
                     receipt: buffer,
                 })
             },
-            Err(_) => None,
+            Err(e) => {
+                println!("Error downloading file: {}", e);
+                None
+            },
         }
     } else {
         None
@@ -99,7 +121,7 @@ async fn upload_file(client: &mut FileStreamingServiceClient<tonic::transport::C
 
 
 pub async fn upload_proof(proof: Proof) -> Result<String, Box<dyn std::error::Error>> {
-    let mut client = FileStreamingServiceClient::connect("http://[::1]:50052").await?;
+    let mut client = FileStreamingServiceClient::connect("http://proof-file-service:50052").await?;
     let file_name =  upload_file(&mut client, proof.receipt.clone()).await?;    
     Ok(file_name)
 }

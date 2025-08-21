@@ -4,5 +4,5 @@ methods/guest/Cargo.lock
 target/
 projects/
 test_data/
-proofs/*
+proofs/
 .vscode/
