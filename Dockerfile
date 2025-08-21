@@ -1,9 +1,15 @@
 # docker build . -t ghcr.io/curiousjaki/zkvm-host:latest --platform linux/amd64 -f Dockerfile
+FROM rust:1.86-bookworm
 
-FROM ghcr.io/curiousjaki/zkvm-base AS builder
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y curl protobuf-compiler && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update
-RUN apt-get install protobuf-compiler -y
+RUN curl -L https://risczero.com/install | bash
+RUN ~/.risc0/bin/rzup install rust 1.88.0
+RUN ~/.risc0/bin/rzup install cpp 2024.1.5
+RUN ~/.risc0/bin/rzup install r0vm 2.3.1
+RUN ~/.risc0/bin/rzup install cargo-risczero 2.3.1
 
 WORKDIR /app
 
@@ -17,9 +23,7 @@ RUN cargo fetch
 RUN cargo build --release
 
 #Copy the binary to /bin/server
-RUN cp ./target/release/host /bin/host
-
-FROM ghcr.io/curiousjaki/zkvm-base AS final
+#RUN cp ./target/release/host /bin/host
 
 #Install Risc0
 #ARG RISC0_VERSION=1.2.5
@@ -43,7 +47,7 @@ RUN adduser \
 USER appuser
 
 # Copy the executable from the "build" stage.
-COPY --from=builder /bin/host /bin/server
+#COPY /bin/host /bin/server
 
 # Expose the port that the application listens on.
 EXPOSE 50051
@@ -51,4 +55,4 @@ ENV RISC0_DEV_MODE=0
 ENV RUST_LOG="info"
 
 # What the container should run when it is started.
-CMD ["/bin/server", "--", "--nocapture"]
+CMD ["./target/release/host", "--", "--nocapture"]

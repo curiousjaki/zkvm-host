@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Server::builder()
         .add_service(VerifiableProcessingServiceServer::new(vpssi))
         .add_service(FileStreamingServiceServer::new(filestramssi))
-        .serve(([0, 0, 0, 0], 50053).into())
+        .serve(([0, 0, 0, 0], 50051).into())
         .await?;
 
     Ok(())
