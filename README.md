@@ -15,7 +15,7 @@ cargo run
 
 ### Run the proving and verification service task worker
 ```bash
-RUST_LOG="info" RISC0_DEV_MODE=0 cargo test --release -- --nocapture
+RUST_LOG="info" RISC0_DEV_MODE=0 cargo run --release -- --nocapture
 ```
 
 ### Executing the project locally in development mode
